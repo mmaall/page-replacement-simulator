@@ -10,8 +10,8 @@ class InvalidPageNumber(Exception):
 class MemoryManager:
 
     def __init__(self, memory_page_count: int, disk_page_count: int):
-        self._memory_page_count = memory_page_count
-        self._disk_page_count = disk_page_count
+        self.memory_page_count = memory_page_count
+        self.disk_page_count = disk_page_count
         self._memory_pages: Set[int] = {}
 
         # Operations to keep track of
@@ -25,7 +25,7 @@ class MemoryManager:
             raise InvalidPageNumber("Attempting to address an invalid page number")
         
         # Check if the page is in memory
-        if page_number in self._memory_pages:
+        if page_number in self.memory_pages:
             self._total_reads += 1
             return
 
@@ -41,4 +41,11 @@ class MemoryManager:
 
     def _find_page_to_evict(self) -> int:
         raise NotImplementedError()
-        
+    
+class Page0ReplacementMemoryManager(MemoryManager):
+    def __init__(self, memory_page_count, disk_page_count):
+        super().__init__(memory_page_count, disk_page_count)
+
+    def _find_page_to_evict(self) -> int:
+        """Always returns the 0'th page for replacement"""
+        return 0
