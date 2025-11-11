@@ -1,3 +1,4 @@
+import random
 from typing import Set 
 
 
@@ -32,7 +33,7 @@ class MemoryManager:
         # Evict a page from memory if necessary
         if len(self._memory_pages) >= self.memory_page_count:
             page_to_evict = self._find_page_to_evict()
-            self.memory_pages.remove(page_to_evict)
+            self._memory_pages.remove(page_to_evict)
 
         # Add page to memory
         self._memory_pages.add(page_number)
@@ -43,10 +44,10 @@ class MemoryManager:
     def _find_page_to_evict(self) -> int:
         raise NotImplementedError()
     
-class Page0ReplacementMemoryManager(MemoryManager):
+class RandomReplacementMemoryManager(MemoryManager):
     def __init__(self, memory_page_count, disk_page_count):
         super().__init__(memory_page_count, disk_page_count)
 
     def _find_page_to_evict(self) -> int:
         """Always returns the 0'th page for replacement"""
-        return 0
+        return random.choice(list(self._memory_pages))
