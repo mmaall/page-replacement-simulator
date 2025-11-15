@@ -1,13 +1,15 @@
 import random
-from typing import Set 
+from typing import Set
 from collections import deque
 
 
 class MemoryManagerException(Exception):
     pass
 
+
 class InvalidPageNumber(Exception):
     pass
+
 
 class MemoryManager:
 
@@ -21,10 +23,9 @@ class MemoryManager:
         self.total_page_faults: int = 0
         self.page_faults: list[int] = []
 
-
     def read_page(self, page_number: int) -> bool:
         """Read a page with the given page number. Returns true if a page fault occured
-        
+
         :param page_number: The page number to read
         :type page_number: int
         :return: Returns whether a page fault occured. True indicates yes
@@ -49,11 +50,10 @@ class MemoryManager:
 
         return True
 
-
-
     def _evict_page(self) -> int:
         raise NotImplementedError()
-    
+
+
 class RandomReplacementMemoryManager(MemoryManager):
     def __init__(self, memory_page_count, disk_page_count):
         super().__init__(memory_page_count, disk_page_count)
@@ -63,6 +63,7 @@ class RandomReplacementMemoryManager(MemoryManager):
         page_to_evict = random.choice(list(self._memory_pages))
         self._memory_pages.remove(page_to_evict)
         return page_to_evict
+
 
 class FifoMemoryManager(MemoryManager):
     def __init__(self, memory_page_count, disk_page_count):
@@ -76,7 +77,6 @@ class FifoMemoryManager(MemoryManager):
             self._input_queue.append(page_number)
 
         return return_value
-
 
     def _evict_page(self) -> int:
         """Evict in FIFO fashion"""
