@@ -1,25 +1,34 @@
-from memory_manager import FifoMemoryManager as MemoryManager
+from memory_manager import FifoMemoryManager, RandomReplacementMemoryManager, LruMemoryManager
 from page_access_generators import generate_page_accesses, WorkloadType
 
 
 def main():
-    total_pages_to_access = 10
+    total_pages_to_access = 20
     pages_in_memory = 8
 
-    memory_manager = MemoryManager(
-        memory_page_count=pages_in_memory, disk_page_count=total_pages_to_access
-    )
+    test_workloads = [WorkloadType.random, WorkloadType.scan, WorkloadType.gaussian]
+    test_memory_managers = [FifoMemoryManager, RandomReplacementMemoryManager, LruMemoryManager]
 
-    scan_page_accesses = generate_page_accesses(
-        total_page_count=total_pages_to_access, total_reads=10000, workload=WorkloadType.scan
-    )
+    for memory_manager in test_memory_managers:
 
-    for page in scan_page_accesses:
-        memory_manager.read_page(page)
+        print(f"Testing Memory Manager: {memory_manager.__name__}")
 
-    print(f"Page Faults: {memory_manager.total_page_faults}")
-    print(f"Total Reads: {memory_manager.total_reads}")
-    print(f"Page Fault Rate: {memory_manager.total_page_faults/memory_manager.total_reads}")
+        for workload in test_workloads:
+            print(f"Testing {workload.name}")
+            m = memory_manager(
+                memory_page_count=pages_in_memory, disk_page_count=total_pages_to_access
+            )
+
+            scan_page_accesses = generate_page_accesses(
+                total_page_count=total_pages_to_access, total_reads=10000, workload=workload
+            )
+
+            for page in scan_page_accesses:
+                m.read_page(page)
+
+            print(f"Page Faults: {m.total_page_faults}")
+            print(f"Total Reads: {m.total_reads}")
+            print(f"Page Fault Rate: {m.total_page_faults/m.total_reads}")
 
 
 if __name__ == "__main__":

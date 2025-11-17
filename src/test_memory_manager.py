@@ -1,6 +1,11 @@
 import pytest
 
-from src.memory_manager import RandomReplacementMemoryManager, MemoryManager, InvalidPageNumber
+from src.memory_manager import (
+    PageRead,
+    RandomReplacementMemoryManager,
+    MemoryManager,
+    InvalidPageNumber,
+)
 
 
 @pytest.fixture()
@@ -36,3 +41,20 @@ def test_page_faults_basic_memory_manager(basic_memory_manager):
 
     assert basic_memory_manager.total_reads == pages_to_read
     assert basic_memory_manager.total_page_faults == pages_to_read
+
+
+def test_memory_read_equality():
+    a = PageRead(page=1, time=1)
+    b = PageRead(page=2, time=1)
+    c = PageRead(page=3, time=2)
+    assert a == b
+    assert a != c
+
+
+def test_memory_read_greater_than():
+    a = PageRead(page=1, time=1)
+    b = PageRead(page=2, time=1)
+    c = PageRead(page=3, time=2)
+    assert a <= c
+    assert a < c
+    assert c > a

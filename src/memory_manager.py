@@ -1,5 +1,7 @@
+from dataclasses import dataclass
+from functools import total_ordering
 import random
-from typing import Set
+from typing import Dict, Set
 from collections import deque
 
 
@@ -9,6 +11,19 @@ class MemoryManagerException(Exception):
 
 class InvalidPageNumber(Exception):
     pass
+
+
+@total_ordering
+@dataclass
+class PageRead:
+    page: int
+    time: int
+
+    def __eq__(self, other):
+        return self.time == other.time
+
+    def __lt__(self, other):
+        return self.time < other.time
 
 
 class MemoryManager:
@@ -71,12 +86,12 @@ class FifoMemoryManager(MemoryManager):
         super().__init__(memory_page_count, disk_page_count)
 
     def read_page(self, page_number: int, *args, **kwargs):
-        return_value = super(FifoMemoryManager, self).read_page(page_number, *args, **kwargs)
+        page_fault = super(FifoMemoryManager, self).read_page(page_number, *args, **kwargs)
 
-        if return_value:
+        if page_fault:
             self._input_queue.append(page_number)
 
-        return return_value
+        return page_fault
 
     def _evict_page(self) -> int:
         """Evict in FIFO fashion"""
@@ -86,3 +101,36 @@ class FifoMemoryManager(MemoryManager):
         self._memory_pages.remove(page_at_head)
 
         return page_at_head
+
+
+class LruMemoryManager(MemoryManager):
+    def __init__(self, memory_page_count, disk_page_count):
+        self._recency_statistics: dict[int, PageRead] = {}
+        super().__init__(memory_page_count, disk_page_count)
+
+    def read_page(self, page_number: int, *args, **kwargs):
+        page_fault = super(LruMemoryManager, self).read_page(page_number, *args, **kwargs)
+
+        # Minus 1 for read epoch because the superclass read will add 1
+        read_epoch = self.total_reads - 1
+
+        if page_fault:
+            # We need to add this record to the stastics
+            self._recency_statistics[page_number] = PageRead(page_number, read_epoch)
+
+        else:
+            # We need to update the statistic because this has been used more recently.
+            self._recency_statistics[page_number].time = read_epoch
+
+        return page_fault
+
+    def _evict_page(self) -> int:
+        """Evict most recently used page"""
+
+        lru_page = min(self._recency_statistics, key=self._recency_statistics.get)
+        # Remove the memory page
+        self._memory_pages.remove(lru_page)
+        # Remove the page from the statistics as we're no longer tracking it.
+        self._recency_statistics.pop(lru_page)
+
+        return lru_page
