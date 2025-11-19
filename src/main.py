@@ -1,4 +1,9 @@
-from memory_manager import FifoMemoryManager, RandomReplacementMemoryManager, LruMemoryManager
+from memory_manager import (
+    FifoMemoryManager,
+    RandomReplacementMemoryManager,
+    LruMemoryManager,
+    LfuMemoryManager,
+)
 from page_access_generators import generate_page_accesses, WorkloadType
 
 
@@ -7,14 +12,18 @@ def main():
     pages_in_memory = 8
 
     test_workloads = [WorkloadType.random, WorkloadType.scan, WorkloadType.gaussian]
-    test_memory_managers = [FifoMemoryManager, RandomReplacementMemoryManager, LruMemoryManager]
+    test_memory_managers = [
+        FifoMemoryManager,
+        RandomReplacementMemoryManager,
+        LruMemoryManager,
+        LfuMemoryManager,
+    ]
 
-    for memory_manager in test_memory_managers:
+    for workload in test_workloads:
+        print(f"Testing {workload.name}")
+        for memory_manager in test_memory_managers:
 
-        print(f"Testing Memory Manager: {memory_manager.__name__}")
-
-        for workload in test_workloads:
-            print(f"Testing {workload.name}")
+            print(f"{memory_manager.__name__}")
             m = memory_manager(
                 memory_page_count=pages_in_memory, disk_page_count=total_pages_to_access
             )

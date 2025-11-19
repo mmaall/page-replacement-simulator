@@ -18,12 +18,22 @@ class InvalidPageNumber(Exception):
 class PageRead:
     page: int
     time: int
+    frequency: int
+    sort_mode: str = "time"
 
     def __eq__(self, other):
-        return self.time == other.time
+        if self.sort_mode == "frequency":
+            return self.frequency == other.frequency
+        else:
+            # Defaults to time
+            return self.time == other.time
 
     def __lt__(self, other):
-        return self.time < other.time
+        if self.sort_mode == "frequency":
+            return self.frequency < other.frequency
+        else:
+            # Defaults to time
+            return self.time < other.time
 
 
 class MemoryManager:
@@ -116,7 +126,7 @@ class LruMemoryManager(MemoryManager):
 
         if page_fault:
             # We need to add this record to the stastics
-            self._recency_statistics[page_number] = PageRead(page_number, read_epoch)
+            self._recency_statistics[page_number] = PageRead(page_number, read_epoch, frequency=0)
 
         else:
             # We need to update the statistic because this has been used more recently.
@@ -134,3 +144,53 @@ class LruMemoryManager(MemoryManager):
         self._recency_statistics.pop(lru_page)
 
         return lru_page
+
+
+class LfuMemoryManager(MemoryManager):
+    def __init__(self, memory_page_count, disk_page_count):
+        self._inactive_page_statistics: dict[int, PageRead] = {}
+        self._active_page_statistics: dict[int, PageRead] = {}
+        super().__init__(memory_page_count, disk_page_count)
+
+    def read_page(self, page_number: int, *args, **kwargs):
+        page_fault = super(LfuMemoryManager, self).read_page(page_number, *args, **kwargs)
+
+        # Minus 1 for read epoch because the superclass read will add 1
+        read_epoch = self.total_reads - 1
+
+        if page_fault:
+            page_read_stats = self._inactive_page_statistics.get(page_number)
+            if not page_read_stats:
+                # No page found in old stats, so we must increase it.
+                page_read_stats = PageRead(page_number, read_epoch, 0, sort_mode="frequency")
+
+            # increase page frequency
+            page_read_stats.frequency += 1
+
+            # add to the active pages
+            self._active_page_statistics[page_number] = page_read_stats
+            # drop from inactive pages
+            try:
+                self._inactive_page_statistics.pop(page_number)
+            except:
+                # swallow key errors here
+                pass
+
+        else:
+            # Increase the frequency of active pages
+            self._active_page_statistics[page_number].frequency += 1
+
+        return page_fault
+
+    def _evict_page(self) -> int:
+        """Evict most recently used page"""
+
+        lfu_page = min(self._active_page_statistics, key=self._active_page_statistics.get)
+        # Remove the memory page
+        self._memory_pages.remove(lfu_page)
+        # Remove the page from the statistics as we're no longer tracking it.
+        lfu_page_stats = self._active_page_statistics.pop(lfu_page)
+        # Add it back to inactive page tracker
+        self._inactive_page_statistics[lfu_page_stats.page] = lfu_page_stats
+
+        return lfu_page
