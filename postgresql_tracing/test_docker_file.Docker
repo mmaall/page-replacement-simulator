@@ -1,0 +1,15 @@
+FROM ubuntu:noble
+WORKDIR /root
+
+# Install dependencies
+RUN apt-get update && apt-get upgrade -y && apt-get dist-upgrade -y
+RUN apt install gcc g++ systemtap-sdt-dev systemtap vim software-properties-common -y 
+
+# Stap additional installation
+RUN apt-get install linux-headers-$(uname -r) -y
+RUN  echo -e "deb http://ddebs.ubuntu.com $(lsb_release -cs)-updates main restricted universe multiverse\ndeb http://ddebs.ubuntu.com $(lsb_release -cs)-proposed main restricted universe multiverse" | tee -a /etc/apt/sources.list.d/ddebs.list
+RUN stap-prep
+RUN stap -e 'probe begin { printf("Hello, World!\n"); exit() }'
+
+CMD ["sleep", "infinity"]
+
