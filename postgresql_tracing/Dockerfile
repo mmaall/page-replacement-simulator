@@ -1,20 +1,29 @@
-FROM ubuntu:resolute-20251101
+FROM ubuntu:noble
 WORKDIR /root
 
 # Expose postgresql port
 EXPOSE 5432
 
 # Install dependencies
-RUN apt-get update && apt-get upgrade -y
+RUN apt-get update && apt-get upgrade -y && apt-get dist-upgrade -y
+#  Postgresql Dependencies
 RUN apt install wget gcc g++ pkg-config libicu-dev bison flex libreadline-dev zlib1g-dev make perl -y 
+# Stap Dependencies
+RUN apt install git libelf-dev libdw-dev elfutils libboost-all-dev python3-setuptools gettext linux-headers-$(uname -r) vim -y 
 
+# Stap installation
+RUN git clone git://sourceware.org/git/systemtap.git
+WORKDIR /root/systemtap
+RUN ./configure && make
+RUN make install; exit 0
 
 # Get postgresql source
+WORKDIR /root
 RUN wget https://ftp.postgresql.org/pub/source/v18.0/postgresql-18.0.tar.gz
 RUN tar -xvzf postgresql-18.0.tar.gz 
 WORKDIR ./postgresql-18.0
 # Run setup
-RUN ./configure
+RUN ./configure --enable-dtrace
 RUN make
 RUN su
 RUN make install

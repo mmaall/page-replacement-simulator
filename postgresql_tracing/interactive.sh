@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker container run -it --entrypoint /bin/bash testpostgres
+docker container run --privileged -it --entrypoint /bin/bash testpostgres
