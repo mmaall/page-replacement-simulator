@@ -1,10 +1,13 @@
 from memory_manager import (
+    MemoryManager,
     FifoMemoryManager,
     RandomReplacementMemoryManager,
     LruMemoryManager,
+    MruMemoryManager,
     LfuMemoryManager,
 )
 from page_access_generators import generate_page_accesses, WorkloadType
+import csv
 
 
 def main():
@@ -12,14 +15,18 @@ def main():
     pages_in_memory = 8
 
     test_workloads = [WorkloadType.random, WorkloadType.scan, WorkloadType.gaussian]
-    test_memory_managers = [
+    test_memory_managers:list[MemoryManager] = [
         FifoMemoryManager,
         RandomReplacementMemoryManager,
         LruMemoryManager,
+        MruMemoryManager,
         LfuMemoryManager,
     ]
 
+    output_rows = []
+
     for workload in test_workloads:
+        output_row = [workload.name]
         print(f"Testing {workload.name}")
         for memory_manager in test_memory_managers:
 
@@ -38,6 +45,21 @@ def main():
             print(f"Page Faults: {m.total_page_faults}")
             print(f"Total Reads: {m.total_reads}")
             print(f"Page Fault Rate: {m.total_page_faults/m.total_reads}")
+            output_row.append(m.total_page_faults/m.total_reads)
+        
+        output_rows.append(output_row)
+
+
+    header = ["workload"] + [memory_manager.__name__ for memory_manager in test_memory_managers]
+    with open(f'output.csv', 'w',newline='') as csv_file:
+        csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        csv_writer.writerow(header)
+
+        for row in output_rows:
+            csv_writer.writerow(row)
+
+
+        
 
 
 if __name__ == "__main__":

@@ -145,6 +145,38 @@ class LruMemoryManager(MemoryManager):
 
         return lru_page
 
+class MruMemoryManager(MemoryManager):
+    def __init__(self, memory_page_count, disk_page_count):
+        self._recency_statistics: dict[int, PageRead] = {}
+        super().__init__(memory_page_count, disk_page_count)
+
+    def read_page(self, page_number: int, *args, **kwargs):
+        page_fault = super(MruMemoryManager, self).read_page(page_number, *args, **kwargs)
+
+        # Minus 1 for read epoch because the superclass read will add 1
+        read_epoch = self.total_reads - 1
+
+        if page_fault:
+            # We need to add this record to the stastics
+            self._recency_statistics[page_number] = PageRead(page_number, read_epoch, frequency=0)
+
+        else:
+            # We need to update the statistic because this has been used more recently.
+            self._recency_statistics[page_number].time = read_epoch
+
+        return page_fault
+
+    def _evict_page(self) -> int:
+        """Evict most recently used page"""
+
+        mru_page = max(self._recency_statistics, key=self._recency_statistics.get)
+        # Remove the memory page
+        self._memory_pages.remove(mru_page)
+        # Remove the page from the statistics as we're no longer tracking it.
+        self._recency_statistics.pop(mru_page)
+
+        return mru_page
+
 
 class LfuMemoryManager(MemoryManager):
     def __init__(self, memory_page_count, disk_page_count):
