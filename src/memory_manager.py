@@ -145,6 +145,7 @@ class LruMemoryManager(MemoryManager):
 
         return lru_page
 
+
 class MruMemoryManager(MemoryManager):
     def __init__(self, memory_page_count, disk_page_count):
         self._recency_statistics: dict[int, PageRead] = {}
