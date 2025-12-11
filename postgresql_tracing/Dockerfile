@@ -38,14 +38,13 @@ WORKDIR /home/postgres/
 RUN /usr/local/pgsql/bin/initdb -D /usr/local/pgsql/data
 
 # Copy in config files
-COPY ./configs/pga_hba.conf /usr/local/pgsql/data/pg_hba.conf
-COPY ./configs/postgresql.conf /usr/local/pgsql/data/postgresql.conf
+COPY ./pgsql_configs/pga_hba.conf /usr/local/pgsql/data/pg_hba.conf
+COPY ./pgsql_configs/postgresql.conf /usr/local/pgsql/data/postgresql.conf
 # Copy startup script
 COPY ./start_postgres.sh /home/postgres/
+COPY ./page_reads.stp /home/postgres
 
 
 CMD ["/home/postgres/start_postgres.sh"]
 
-# CMD ["/usr/local/pgsql/bin/pg_ctl", "-D", "/usr/local/pgsql/data", "-l", "logfile", "start", "&&", "sleep", "infinity"]
-# CMD ["sleep", "infinity"]
 # CMD ["echo", "hey"]

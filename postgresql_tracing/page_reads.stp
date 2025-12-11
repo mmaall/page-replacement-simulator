@@ -1,0 +1,5 @@
+
+probe process("/usr/local/pgsql/bin/postgres").mark("buffer__read__start") {
+    printf("%d\n",$arg2)
+}
+
