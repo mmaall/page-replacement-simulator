@@ -1,13 +1,20 @@
 from enum import Enum, auto
 from random import randint, gauss
-
+import json
+from functools import lru_cache
 
 class WorkloadType(Enum):
     scan = auto()
     random = auto()
     gaussian = auto()
+    postgres_trace_tpcc = auto()
+    postgres_trace_tpcc_medium_concurrency = auto()
+    postgres_trace_tpcc_high_concurrency = auto()
+    postgres_trace_tpch = auto()
+    pgbench = auto()
 
 
+@lru_cache(maxsize=256)
 def generate_page_accesses(
     total_page_count: int, total_reads: int, workload: WorkloadType
 ) -> list[int]:
@@ -41,4 +48,23 @@ def generate_page_accesses(
             if page_number >= 0 and page_number < total_page_count:
                 # Only take the page number if it fits in our bounds
                 read_order.append(page_number)
-    return read_order
+    elif workload == WorkloadType.postgres_trace_tpcc:
+        read_order = read_trace_from_file("../postgresql_tracing/data/tpcc/benchbase-disk-reads-default-configuration")
+    elif workload == WorkloadType.postgres_trace_tpcc_high_concurrency:
+        read_order = read_trace_from_file("../postgresql_tracing/data/tpcc/benchbase-disk-reads-high-concurrency")
+    elif workload == WorkloadType.postgres_trace_tpcc_medium_concurrency:
+        read_order = read_trace_from_file("../postgresql_tracing/data/tpcc/benchbase-disk-reads-medium-concurrency")
+    elif workload == WorkloadType.postgres_trace_tpch:
+        read_order =  read_trace_from_file("../postgresql_tracing/data/tpch/benchbase_tpch_reads")
+    elif workload == WorkloadType.pgbench:
+        read_order = json.loads(open('../postgresql_tracing/data/pages_requested').read())
+    return read_order[0:2000000]
+
+
+def read_trace_from_file(filename: str) -> []:
+    output = []
+    with open(filename) as trace_file:
+        for line in trace_file:
+            output.append(int(line))
+
+    return output

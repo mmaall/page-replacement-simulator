@@ -3,6 +3,7 @@ from functools import total_ordering
 import random
 from typing import Dict, Set
 from collections import deque
+import math
 
 
 class MemoryManagerException(Exception):
@@ -227,3 +228,99 @@ class LfuMemoryManager(MemoryManager):
         self._inactive_page_statistics[lfu_page_stats.page] = lfu_page_stats
 
         return lfu_page
+
+
+class LruKPageStats():
+
+    def __init__(self, page:int, k:int):
+        # Page number
+        self.page = page
+        # History of page references
+        self.history = [0] * k
+        # Max references to hold onto
+        self.k = k
+        # Correlated reference period
+        self.c_reference_period = -1
+        # Last time this page was referenced
+        self.last = -1
+
+    def recalculate_history(self, new_read_time: int):
+
+        # TODO: I think we need to check if history is uninitialized
+        if(self.history[0] == 0):
+            self.history[0] = new_read_time
+
+        else:
+            page_c_ref_period = self.last - self.history[0]
+            for i in range(1, self.k):
+                if(self.history[self.k-i-1] == 0):
+                    # don't calculate history if it is based on zero
+                    continue
+                self.history[self.k-i] = self.history[self.k-i-1] + page_c_ref_period
+
+        self.history[0] = new_read_time
+
+
+
+class LruKMemoryManager(MemoryManager):
+    def __init__(self, memory_page_count, disk_page_count, k:int = 1, c_ref_period:int = 0):
+        self._k = k
+        self._page_stats: dict[int, LruKPageStats] = {} 
+        self._c_ref_period = c_ref_period
+        super().__init__(memory_page_count, disk_page_count)
+
+    def read_page(self, page_number: int, *args, **kwargs):
+        page_fault = super(LruKMemoryManager, self).read_page(page_number, *args, **kwargs)
+
+        # Minus 1 for read epoch because the superclass read will add 1
+        read_time = self.total_reads - 1
+
+        if page_fault:
+            page_stats = self._page_stats.get(page_number)
+            if not page_stats:
+                # Page is currently not tracked in statistics
+                page_stats = LruKPageStats(page_number, self._k)
+                self._page_stats[page_number] = page_stats
+
+
+            # shift history
+            for i in range(1, self._k):
+                page_stats.history[self._k-i] = page_stats.history[self._k-i-1]
+            page_stats.history[0] = read_time
+            page_stats.last = read_time
+
+
+        else:
+            # Page was already in memory, we need to update statistics
+            page_stats = self._page_stats[page_number]
+
+            if read_time - page_stats.last > self._c_ref_period:
+                # We are outside of the crp, record in history 
+                page_stats.recalculate_history(read_time)
+            
+            # Update the last access time
+            page_stats.last = read_time
+
+        return page_fault
+
+    def _evict_page(self) -> int:
+        """Evict most recently used page"""
+
+        read_time = self.total_reads
+        minimum = read_time
+        victim = list(self._memory_pages)[0] # Select some arbitrary victim
+
+        for page in self._memory_pages:
+            page_stat = self._page_stats[page]
+
+            if read_time - page_stat.last > self._c_ref_period and page_stat.history[self._k-1] < minimum:
+                # Select a page if it is out of correlated reference period and it has max k distance
+                # Tracking min because we're looking for the earliest time, hence oldest reference
+                minimum = page_stat.history[self._k-1]
+                victim = page
+
+
+        # Remove the memory page
+        self._memory_pages.remove(victim)
+
+        return victim
